@@ -1,6 +1,6 @@
 /**
  * @file model.c
- * @brief Model layer implementation with Bluetooth Socket Support
+ * @brief Model layer implementation with Pauses and Blinkers
  */
 
 #include "model.h"
@@ -14,7 +14,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-// --- DEFINITIONS & GLOBALS (The missing part!) ---
+// --- DEFINITIONS & GLOBALS ---
 #define SPEED_SOCKET "/tmp/lvgl_speed.sock"
 #define MUSIC_SOCKET "/tmp/lvgl_music.sock"
 
@@ -25,23 +25,17 @@ static int music_sock = -1;
 static int open_socket(const char* path) {
     int fd = socket(AF_UNIX, SOCK_DGRAM, 0);
     if (fd < 0) return -1;
-
-    // Set non-blocking so it doesn't freeze the UI
     int flags = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-
     struct sockaddr_un addr;
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
-
-    unlink(path); // Remove old file
+    unlink(path); 
     if (bind(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         close(fd);
         return -1;
     }
-    
-    // IMPORTANT: Allow Python (piuser) to write to this root-owned file
     chmod(path, 0666); 
     return fd;
 }
@@ -70,7 +64,7 @@ void model_init(speedometer_state_t *state)
     speed_sock = open_socket(SPEED_SOCKET);
     music_sock = open_socket(MUSIC_SOCKET);
 
-    printf("🚗 Model: Listening on Speed & Music sockets.\n");
+    printf("🚗 Model: Simulation Active (Asymmetric + Pauses)\n");
 }
 
 int model_calculate_gear(int speed)
@@ -87,7 +81,6 @@ int model_calculate_gear(int speed)
 int model_calculate_rpm(int speed, int gear)
 {
     if (gear == 0 || speed == 0) return 1;
-    
     float base_rpm;
     switch(gear) {
         case 1: base_rpm = speed * 0.20f; break;
@@ -98,7 +91,6 @@ int model_calculate_rpm(int speed, int gear)
         case 6: base_rpm = speed * 0.04f; break;
         default: base_rpm = speed * 0.06f; break;
     }
-    
     int rpm = (int)(base_rpm + 2.0f);
     if (rpm < 1) rpm = 1;
     if (rpm > 13) rpm = 13;
@@ -107,69 +99,91 @@ int model_calculate_rpm(int speed, int gear)
 
 void model_update_speed(speedometer_state_t *state, int sim_speed)
 {
-    // 1. Read Speed from Python
-    // if (speed_sock >= 0) {
-    //     uint32_t received_speed = 0;
-    //     int bytes = read(speed_sock, &received_speed, sizeof(received_speed));
-        
-    //     if (bytes > 0) {
-    //         state->speed = (int)received_speed;
-    //     }
-    // }
+    (void)sim_speed; // Silence unused parameter warning
 
-    // --- 1.1. SIMULATION LOGIC (0->MAX->0) ---
-    // 'static' means these variables remember their value between function calls
+    // Static variables preserve their value between function calls
+    static float precise_speed = 0.0f; 
     static int direction = 1; // 1 = Accelerate, -1 = Decelerate
-    
-    // Change speed
-    state->speed += direction;
+    static int pause_timer = 0; // Frames to wait
 
-    // Check bounds
-    if (state->speed >= 200) {
-        state->speed = 200;
-        direction = -1; // Start slowing down
-    } else if (state->speed <= 0) {
-        state->speed = 0;
-        direction = 1; // Start speeding up
+    // --- 1. HANDLE PAUSES ---
+    if (pause_timer > 0) {
+        pause_timer--;
+        return; // Don't change speed while paused
     }
 
-    // NOTE: We deliberately IGNORE 'speed_sock' here so the simulation runs.
+    // --- 2. ASYMMETRIC SIMULATION LOGIC ---
+    if (direction == 1) {
+        // Accelerating (Left Turn Signal ON)
+        state->left_signal = true;   
+        state->right_signal = false;
+        
+        precise_speed += 0.66f; // Rise in ~5 sec
+        
+        if (precise_speed >= 200.0f) {
+            precise_speed = 200.0f;
+            direction = -1; // Switch to braking
+            
+            // PAUSE AT TOP: 0.5s * 60FPS = 30 frames
+            pause_timer = 30; 
+        }
+    } 
+    else {
+        // Decelerating (Right Turn Signal ON)
+        state->left_signal = false;
+        state->right_signal = true; 
+        
+        precise_speed -= 1.11f; // Fall in ~3 sec
+        
+        if (precise_speed <= 0.0f) {
+            precise_speed = 0.0f;
+            direction = 1; // Switch to accelerating
+            
+            // PAUSE AT BOTTOM: 1.0s * 60FPS = 60 frames
+            pause_timer = 60;
+            
+            // Turn off all signals when stopped
+            state->left_signal = false;
+            state->right_signal = false;
+        }
+    }
 
-    // 2. Read Music from Python
+    // Apply to state (Cast float to int)
+    state->speed = (int)precise_speed;
+
+    // --- 3. MUSIC DATA READING ---
     if (music_sock >= 0) {
         char buffer[128];
         int bytes = read(music_sock, buffer, sizeof(buffer) - 1);
         if (bytes > 0) {
-            buffer[bytes] = '\0'; // Null terminate
-            
-            // Parse: "Title|Artist|Album"
+            buffer[bytes] = '\0';
             char *token = strtok(buffer, "|");
             if (token) strncpy(state->track_title, token, 63);
-            
             token = strtok(NULL, "|");
             if (token) strncpy(state->track_artist, token, 63);
-            
             token = strtok(NULL, "|");
             if (token) strncpy(state->track_album, token, 63);
         }
     }
 
-    // 3. Update Physics
+    // --- 4. UPDATE PHYSICS ---
     state->gear = model_calculate_gear(state->speed);
     state->rpm = model_calculate_rpm(state->speed, state->gear);
 }
 
+// --- MISSING FUNCTIONS (This was the cause of the error!) ---
+
 int model_get_speed_zone(int speed)
 {
-    if (speed > 160) return 3;
-    if (speed > 120) return 2;
-    if (speed > 60)  return 1;
-    return 0;
+    if (speed > 160) return 3; // Red
+    if (speed > 120) return 2; // Orange
+    if (speed > 60)  return 1; // Yellow
+    return 0; // Green
 }
 
 int model_get_rpm_zone(int rpm)
 {
-    if (rpm > 10) return 2;
-    if (rpm > 7)  return 1;
-    return 0;
+    if (rpm > 10) return 2; // Red
+    if (rpm > 7)  return 1; // Orange
+    return 0; // Green
 }

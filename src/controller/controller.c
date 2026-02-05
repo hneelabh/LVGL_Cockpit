@@ -1,8 +1,6 @@
 /**
  * @file controller.c
- * @brief Controller layer implementation
- * 
- * Implements application logic, timers, and coordinates model-view updates
+ * @brief Controller layer implementation - Syncs Model to View
  */
 
 #include "controller.h"
@@ -16,114 +14,56 @@ static controller_context_t *g_ctx = NULL;
  * ======================================================================== */
 
 /**
- * @brief Turn signal blink timer callback (500ms cycle)
+ * @brief Turn signal blink timer callback (Every 16ms)
  */
 static void turn_signal_timer_cb(lv_timer_t *timer)
 {
     (void)timer;
-    
     if (g_ctx == NULL) return;
     
+    // --- 1. SYNC MODEL TO CONTROLLER ---
+    // The model decides IF we are turning (based on accel/decel)
+    g_ctx->turn_signals.left_active = g_ctx->speedometer.left_signal;
+    g_ctx->turn_signals.right_active = g_ctx->speedometer.right_signal;
+    
+    // --- 2. HANDLE BLINKING ANIMATION ---
     g_ctx->turn_signals.blink_counter++;
     
-    // Toggle every 12 ticks (12 * 40ms = 480ms ≈ 500ms)
-    if (g_ctx->turn_signals.blink_counter >= 12) {
+    // Toggle blink state every ~500ms (30 frames * 16ms = 480ms)
+    if (g_ctx->turn_signals.blink_counter >= 30) {
         g_ctx->turn_signals.blink_counter = 0;
         
-        // Toggle blink states
+        // Handle Left
         if (g_ctx->turn_signals.left_active) {
             g_ctx->turn_signals.left_blink = !g_ctx->turn_signals.left_blink;
         } else {
-            g_ctx->turn_signals.left_blink = false;
+            g_ctx->turn_signals.left_blink = false; // Force OFF if not active
         }
         
+        // Handle Right
         if (g_ctx->turn_signals.right_active) {
             g_ctx->turn_signals.right_blink = !g_ctx->turn_signals.right_blink;
         } else {
-            g_ctx->turn_signals.right_blink = false;
+            g_ctx->turn_signals.right_blink = false; // Force OFF if not active
         }
         
-        // Update view
+        // Send to View
         view_update_turn_signals(&g_ctx->view, &g_ctx->turn_signals);
     }
 }
 
 /**
- * @brief Engine simulation timer callback (40ms)
+ * @brief Engine physics timer (Runs at 60FPS / 16ms)
  */
 static void engine_sim_timer_cb(lv_timer_t *timer)
 {
     (void)timer;
-    
     if (g_ctx == NULL) return;
     
-    static int speed = 0;
+    // 1. Update Physics (Model handles speed/pauses internaly)
+    model_update_speed(&g_ctx->speedometer, 0);
     
-    // Handle pause timer
-    if (g_ctx->demo.pause_timer > 0) {
-        g_ctx->demo.pause_timer--;
-        return;
-    }
-    
-    // State machine
-    switch(g_ctx->demo.state) {
-        case 0: // Normal acceleration
-            speed += 3;
-            // Pause at gear changes
-            if (speed == 24 || speed == 48 || speed == 78 || 
-                speed == 117 || speed == 156) {
-                g_ctx->demo.pause_timer = 5;  // 200ms pause
-            }
-            if (speed >= 180) {
-                speed = 180;
-                g_ctx->demo.state = 1;
-                g_ctx->demo.pause_timer = 50;  // 2 second pause
-            }
-            break;
-            
-        case 1: // Deceleration
-            speed -= 5;
-            if (speed <= 0) {
-                speed = 0;
-                g_ctx->demo.state = 2;
-                g_ctx->demo.pause_timer = 25;  // 1 second pause
-            }
-            break;
-            
-        case 2: // Sport mode acceleration
-            speed += 5;
-            if (speed >= 200) {
-                speed = 200;
-                g_ctx->demo.state = 3;
-                g_ctx->demo.pause_timer = 50;  // 2 second pause
-            }
-            break;
-            
-        case 3: // Full stop
-            speed -= 4;
-            if (speed <= 0) {
-                speed = 0;
-                g_ctx->demo.state = 0;
-                g_ctx->demo.pause_timer = 75;  // 3 second pause
-            }
-            break;
-    }
-    
-    // Update turn signals based on state
-    if (g_ctx->demo.state == 0 || g_ctx->demo.state == 2) {
-        // Accelerating - left signal
-        g_ctx->turn_signals.left_active = true;
-        g_ctx->turn_signals.right_active = false;
-    } else {
-        // Braking - right signal
-        g_ctx->turn_signals.left_active = false;
-        g_ctx->turn_signals.right_active = true;
-    }
-    
-    // Update model
-    model_update_speed(&g_ctx->speedometer, speed);
-    
-    // Update display
+    // 2. Sync Display
     controller_update_display(g_ctx);
 }
 
@@ -133,23 +73,12 @@ static void engine_sim_timer_cb(lv_timer_t *timer)
 
 void controller_init(controller_context_t *ctx)
 {
-    // Store global context for timer callbacks
     g_ctx = ctx;
     
-    // Initialize model
     model_init(&ctx->speedometer);
-    
-    // Initialize turn signals
     memset(&ctx->turn_signals, 0, sizeof(turn_signal_state_t));
     
-    // Initialize demo state
-    ctx->demo.state = 0;
-    ctx->demo.pause_timer = 0;
-    
-    // Create UI
     view_init(&ctx->view);
-    
-    // Initial display update
     controller_update_display(ctx);
 }
 
@@ -157,9 +86,9 @@ void controller_start_demo(controller_context_t *ctx)
 {
     (void)ctx;
     
-    // Start simulation timers
-    lv_timer_create(engine_sim_timer_cb, 40, NULL);      // 40ms = 25 FPS
-    lv_timer_create(turn_signal_timer_cb, 40, NULL);     // 40ms check
+    // Run both timers at 60 FPS (16ms) for smooth animation
+    lv_timer_create(engine_sim_timer_cb, 16, NULL);
+    lv_timer_create(turn_signal_timer_cb, 16, NULL); 
 }
 
 void controller_update_display(controller_context_t *ctx)
@@ -167,17 +96,19 @@ void controller_update_display(controller_context_t *ctx)
     // Update speed and arc
     view_update_speed(&ctx->view, &ctx->speedometer);
     
-    // Get zone color for gear display
+    // Update gear logic
     int zone = model_get_speed_zone(ctx->speedometer.speed);
     lv_color_t zone_color = view_get_zone_color(zone);
     
-    // Update gear
     view_update_gear(&ctx->view, ctx->speedometer.gear, zone_color);
-    
-    // Update RPM
     view_update_rpm(&ctx->view, ctx->speedometer.rpm);
     
-    // Turn signals are updated in their own timer
+    // Update Music Labels
+    if (ctx->view.label_title != NULL) {
+        lv_label_set_text(ctx->view.label_title, ctx->speedometer.track_title);
+        lv_label_set_text(ctx->view.label_artist, ctx->speedometer.track_artist);
+        lv_label_set_text(ctx->view.label_album, ctx->speedometer.track_album);
+    }
 }
 
 void controller_set_turn_signals(controller_context_t *ctx, bool left, bool right)

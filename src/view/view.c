@@ -213,62 +213,6 @@ static void create_temp_display(view_components_t *components)
     lv_obj_align(components->temp_label, LV_ALIGN_BOTTOM_RIGHT, -40, -50);
 }
 
-// static void create_music_player(view_components_t *components) {
-//     // 1. The Container (Card Style)
-//     components->music_cont = lv_obj_create(components->master_container);
-//     lv_obj_set_size(components->music_cont, 300, 90);
-//     lv_obj_align(components->music_cont, LV_ALIGN_BOTTOM_MID, 0, -20);
-    
-//     // Semi-transparent dark background
-//     lv_obj_set_style_bg_color(components->music_cont, lv_color_hex(0x101010), 0);
-//     lv_obj_set_style_bg_opa(components->music_cont, LV_OPA_90, 0);
-//     lv_obj_set_style_border_color(components->music_cont, lv_color_hex(0x404040), 0);
-//     lv_obj_set_style_border_width(components->music_cont, 2, 0);
-//     lv_obj_set_style_radius(components->music_cont, 15, 0);
-//     lv_obj_clear_flag(components->music_cont, LV_OBJ_FLAG_SCROLLABLE);
-
-//     // 2. The Icon (Left Side)
-//     lv_obj_t * icon_box = lv_obj_create(components->music_cont);
-//     lv_obj_set_size(icon_box, 60, 60);
-//     lv_obj_align(icon_box, LV_ALIGN_LEFT_MID, -10, 0);
-//     lv_obj_set_style_bg_color(icon_box, lv_color_hex(0x333333), 0);
-//     lv_obj_set_style_radius(icon_box, 10, 0);
-//     lv_obj_clear_flag(icon_box, LV_OBJ_FLAG_SCROLLABLE);
-
-//     lv_obj_t * icon_label = lv_label_create(icon_box);
-//     lv_label_set_text(icon_label, LV_SYMBOL_AUDIO);
-//     lv_obj_center(icon_label);
-//     lv_obj_set_style_text_font(icon_label, &lv_font_montserrat_24, 0);
-//     lv_obj_set_style_text_color(icon_label, COLOR_NEON_GREEN, 0);
-
-//     // 3. Track Title (Big & White)
-//     components->label_title = lv_label_create(components->music_cont);
-//     lv_label_set_text(components->label_title, "Not Playing");
-//     lv_obj_set_width(components->label_title, 200);
-//     lv_obj_align(components->label_title, LV_ALIGN_TOP_LEFT, 60, 5);
-//     lv_obj_set_style_text_color(components->label_title, lv_color_white(), 0);
-//     lv_obj_set_style_text_font(components->label_title, &lv_font_montserrat_20, 0);
-//     lv_label_set_long_mode(components->label_title, LV_LABEL_LONG_SCROLL_CIRCULAR);
-
-//     // 4. Artist (Smaller & Grey)
-//     components->label_artist = lv_label_create(components->music_cont);
-//     lv_label_set_text(components->label_artist, "Connect Device");
-//     lv_obj_set_width(components->label_artist, 200);
-//     lv_obj_align(components->label_artist, LV_ALIGN_TOP_LEFT, 60, 30);
-//     lv_obj_set_style_text_color(components->label_artist, lv_color_hex(0xAAAAAA), 0);
-//     lv_obj_set_style_text_font(components->label_artist, &lv_font_montserrat_16, 0);
-//     lv_label_set_long_mode(components->label_artist, LV_LABEL_LONG_DOT);
-    
-//     // 5. Album (Tiny & Italic-ish)
-//     components->label_album = lv_label_create(components->music_cont);
-//     lv_label_set_text(components->label_album, "");
-//     lv_obj_set_width(components->label_album, 200);
-//     lv_obj_align(components->label_album, LV_ALIGN_TOP_LEFT, 60, 52);
-//     lv_obj_set_style_text_color(components->label_album, lv_color_hex(0x777777), 0);
-//     lv_obj_set_style_text_font(components->label_album, &lv_font_montserrat_12, 0);
-//     lv_label_set_long_mode(components->label_album, LV_LABEL_LONG_DOT);
-// }
-
 static void create_music_player(view_components_t *components) {
     // 1. Get the Parent
     // If we are in the 'Pointer Swap' init, master_container is pointing to the Music Tile.
