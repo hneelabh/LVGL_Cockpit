@@ -25,7 +25,7 @@ typedef struct {
     int fuel_level;         // Fuel level (0-8 bars)
     int temperature;        // Engine temperature (Celsius)
 
-    // --- SIGNAL REQUEST FLAGS (Critical Fix!) ---
+    // --- SIGNAL REQUEST FLAGS ---
     bool left_signal;       // Model requests Left Blinker
     bool right_signal;      // Model requests Right Blinker
 
@@ -34,6 +34,10 @@ typedef struct {
     char track_artist[64];
     char track_album[64];
 
+    // --- NAVIGATION DATA ---
+    char nav_street[64];    // "Main Street"
+    int nav_distance;       // Meters to turn (e.g. 200)
+    char nav_icon[8];       // Arrow Symbol (LV_SYMBOL_LEFT)
 } speedometer_state_t;
 
 /**

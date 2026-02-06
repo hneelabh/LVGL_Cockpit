@@ -18,6 +18,9 @@
 #define SPEED_SOCKET "/tmp/lvgl_speed.sock"
 #define MUSIC_SOCKET "/tmp/lvgl_music.sock"
 
+// Left symbol from LVGL
+#define LV_SYMBOL_LEFT "\xEF\x81\x93"
+
 static int speed_sock = -1;
 static int music_sock = -1;
 
@@ -65,6 +68,11 @@ void model_init(speedometer_state_t *state)
     music_sock = open_socket(MUSIC_SOCKET);
 
     printf("🚗 Model: Simulation Active (Asymmetric + Pauses)\n");
+
+    // Navigation
+    strcpy(state->nav_street, "Kings Road");
+    state->nav_distance = 500;
+    strcpy(state->nav_icon, LV_SYMBOL_LEFT); // Need string for symbol
 }
 
 int model_calculate_gear(int speed)
@@ -169,6 +177,22 @@ void model_update_speed(speedometer_state_t *state, int sim_speed)
     // --- 4. UPDATE PHYSICS ---
     state->gear = model_calculate_gear(state->speed);
     state->rpm = model_calculate_rpm(state->speed, state->gear);
+
+    // --- 5. NAVIGATION MOCK ---
+    // Decrement distance if moving
+    if (state->speed > 0) {
+        // Decrease distance roughly based on speed (mock logic)
+        // 100km/h = ~27m/s. At 60fps, that's ~0.45m per frame.
+        static float dist_counter = 500.0f;
+        dist_counter -= (state->speed * 0.005f); // Scale factor
+        
+        if (dist_counter <= 0) {
+            dist_counter = 500.0f; // Reset for demo loop
+            // Optional: Flip arrow
+            // if (strcmp(state->nav_icon, LV_SYMBOL_LEFT) == 0) ...
+        }
+        state->nav_distance = (int)dist_counter;
+    }
 }
 
 // --- MISSING FUNCTIONS (This was the cause of the error!) ---

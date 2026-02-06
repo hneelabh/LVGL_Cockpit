@@ -55,11 +55,23 @@ typedef struct {
     lv_obj_t *fuel_label;                         // Fuel gauge
     lv_obj_t *temp_label;                         // Temperature
 
-    // Now on page 2
+    //  Music Components
     lv_obj_t * music_cont;                        // Music Content
     lv_obj_t * label_title;                       // Music Title
     lv_obj_t * label_artist;                      // Music Artist
     lv_obj_t * label_album;                       // Music Album
+
+    // Notifications overlay
+    lv_obj_t * notification_panel;
+    lv_obj_t * notif_label;
+    lv_obj_t * notif_icon;
+    lv_anim_t  notif_anim;                         // To store the animation
+    bool is_alert_active;                          // State Tracker for Notification - True if panel down
+    
+    // Navigation Components
+    lv_obj_t * label_nav_icon;   // The Big Arrow
+    lv_obj_t * label_nav_dist;   // "200 m"
+    lv_obj_t * label_nav_street; // "Wall Street"
 } view_components_t;
 
 /* ========================================================================
@@ -114,5 +126,8 @@ lv_color_t view_get_zone_color(int zone);
  * @return LVGL color
  */
 lv_color_t view_get_rpm_color(int zone);
+
+// Showing te notifications
+void view_set_alert_state(view_components_t *components, bool is_active, const char *text);
 
 #endif // VIEW_H

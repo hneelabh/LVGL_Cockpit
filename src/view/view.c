@@ -213,53 +213,170 @@ static void create_temp_display(view_components_t *components)
     lv_obj_align(components->temp_label, LV_ALIGN_BOTTOM_RIGHT, -40, -50);
 }
 
-static void create_music_player(view_components_t *components) {
-    // 1. Get the Parent
-    // If we are in the 'Pointer Swap' init, master_container is pointing to the Music Tile.
-    lv_obj_t * parent = components->master_container; 
+static void create_music_player(view_components_t *components, lv_obj_t *parent) {
+    // 1. The Container (Left Half)
+    components->music_cont = lv_obj_create(parent);
+    // CHANGED: Height 400 -> 320 (To fit below top bar)
+    lv_obj_set_size(components->music_cont, 380, 320); 
+    // CHANGED: Y offset -20 -> +30 (Push it DOWN)
+    lv_obj_align(components->music_cont, LV_ALIGN_LEFT_MID, 10, 30); 
+    
+    lv_obj_set_style_bg_color(components->music_cont, lv_color_hex(0x181818), 0);
+    lv_obj_set_style_radius(components->music_cont, 15, 0);
+    lv_obj_set_style_border_width(components->music_cont, 0, 0);
+    lv_obj_clear_flag(components->music_cont, LV_OBJ_FLAG_SCROLLABLE);
 
-    // 2. Big Album Art Placeholder (Gray Box)
-    lv_obj_t * art_box = lv_obj_create(parent);
-    lv_obj_set_size(art_box, 150, 150);
-    lv_obj_center(art_box);
-    lv_obj_align(art_box, LV_ALIGN_CENTER, 0, -40);
+    // 2. Art Box
+    lv_obj_t * art_box = lv_obj_create(components->music_cont);
+    lv_obj_set_size(art_box, 120, 120); // Slightly smaller art
+    lv_obj_align(art_box, LV_ALIGN_TOP_MID, 0, 30); 
     lv_obj_set_style_bg_color(art_box, lv_color_hex(0x333333), 0);
     lv_obj_set_style_border_width(art_box, 0, 0);
     lv_obj_clear_flag(art_box, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t * icon = lv_label_create(art_box);
     lv_label_set_text(icon, LV_SYMBOL_AUDIO);
-    lv_obj_set_style_text_font(icon, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_font(icon, &lv_font_montserrat_24, 0);
     lv_obj_center(icon);
 
-    // 3. Title (CRITICAL: Must assign to components->label_title)
-    components->label_title = lv_label_create(parent);
+    // 3. Title
+    components->label_title = lv_label_create(components->music_cont);
     lv_label_set_text(components->label_title, "Not Playing");
-    lv_obj_set_width(components->label_title, 300);
-    lv_obj_align(components->label_title, LV_ALIGN_CENTER, 0, 60);
+    lv_obj_set_width(components->label_title, 350);
+    lv_obj_align(components->label_title, LV_ALIGN_TOP_MID, 0, 170); // Moved up
     lv_obj_set_style_text_align(components->label_title, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_font(components->label_title, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_color(components->label_title, lv_color_white(), 0);
 
-    // 4. Artist (CRITICAL: Must assign to components->label_artist)
-    components->label_artist = lv_label_create(parent);
+    // 4. Artist
+    components->label_artist = lv_label_create(components->music_cont);
     lv_label_set_text(components->label_artist, "Connect Device");
-    lv_obj_align(components->label_artist, LV_ALIGN_CENTER, 0, 90);
+    lv_obj_align(components->label_artist, LV_ALIGN_TOP_MID, 0, 205);
     lv_obj_set_style_text_font(components->label_artist, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(components->label_artist, lv_color_hex(0xAAAAAA), 0);
-    
-    // 5. Album (CRITICAL: Must assign to components->label_album)
-    components->label_album = lv_label_create(parent);
+
+    // 5. Album
+    components->label_album = lv_label_create(components->music_cont);
     lv_label_set_text(components->label_album, "");
-    lv_obj_align(components->label_album, LV_ALIGN_CENTER, 0, 115);
+    lv_obj_align(components->label_album, LV_ALIGN_TOP_MID, 0, 230);
     lv_obj_set_style_text_font(components->label_album, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(components->label_album, lv_color_hex(0x777777), 0);
+}
 
-    // 6. Header Label
-    lv_obj_t * header = lv_label_create(parent);
-    lv_label_set_text(header, "MEDIA PLAYER");
+// Animation callback
+static void anim_y_cb(void * var, int32_t v) {
+    lv_obj_set_y((lv_obj_t*)var, v);
+}
+
+// THE NEW LOGIC: Smart State Switcher
+void view_set_alert_state(view_components_t *components, bool is_active, const char *text) {
+    
+    // Case 1: Alert is requested, but we are NOT currently showing one
+    if (is_active && !components->is_alert_active) {
+        
+        // Update Text
+        lv_label_set_text(components->notif_label, text);
+        
+        // Animate DOWN (Show)
+        lv_anim_del(components->notification_panel, anim_y_cb);
+        lv_anim_t a;
+        lv_anim_init(&a);
+        lv_anim_set_var(&a, components->notification_panel);
+        lv_anim_set_values(&a, -100, 20); // Slide from Hidden to Visible
+        lv_anim_set_time(&a, 300); // Fast entry (300ms)
+        lv_anim_set_exec_cb(&a, anim_y_cb);
+        lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+        lv_anim_start(&a);
+        
+        components->is_alert_active = true;
+    }
+    
+    // Case 2: Alert is NOT requested, but we ARE currently showing one
+    else if (!is_active && components->is_alert_active) {
+        
+        // Animate UP (Hide)
+        lv_anim_del(components->notification_panel, anim_y_cb);
+        lv_anim_t a;
+        lv_anim_init(&a);
+        lv_anim_set_var(&a, components->notification_panel);
+        lv_anim_set_values(&a, 20, -100); // Slide from Visible to Hidden
+        lv_anim_set_time(&a, 300);
+        lv_anim_set_exec_cb(&a, anim_y_cb);
+        lv_anim_set_path_cb(&a, lv_anim_path_ease_in); // Ease IN for exit
+        lv_anim_start(&a);
+        
+        components->is_alert_active = false;
+    }
+    
+    // Case 3: State hasn't changed? Do nothing.
+}
+
+static void create_notification_overlay(view_components_t *components) {
+    // Create popup on the ROOT wrapper (so it covers everything)
+    components->notification_panel = lv_obj_create(components->master_container);
+    lv_obj_set_size(components->notification_panel, 400, 80);
+    lv_obj_align(components->notification_panel, LV_ALIGN_TOP_MID, 0, -100); // Start OFF SCREEN
+    
+    // Style: Red Gradient for "Alert" feel
+    lv_obj_set_style_bg_color(components->notification_panel, lv_color_hex(0xAA0000), 0);
+    lv_obj_set_style_bg_grad_color(components->notification_panel, lv_color_hex(0x550000), 0);
+    lv_obj_set_style_bg_grad_dir(components->notification_panel, LV_GRAD_DIR_VER, 0);
+    lv_obj_set_style_radius(components->notification_panel, 10, 0);
+    lv_obj_set_style_shadow_width(components->notification_panel, 20, 0);
+    lv_obj_clear_flag(components->notification_panel, LV_OBJ_FLAG_SCROLLABLE);
+
+    // Icon
+    components->notif_icon = lv_label_create(components->notification_panel);
+    lv_label_set_text(components->notif_icon, LV_SYMBOL_WARNING);
+    lv_obj_align(components->notif_icon, LV_ALIGN_LEFT_MID, 10, 0);
+    lv_obj_set_style_text_font(components->notif_icon, &lv_font_montserrat_32, 0);
+    lv_obj_set_style_text_color(components->notif_icon, lv_color_white(), 0);
+
+    // Text
+    components->notif_label = lv_label_create(components->notification_panel);
+    lv_label_set_text(components->notif_label, "System Alert");
+    lv_obj_align(components->notif_label, LV_ALIGN_LEFT_MID, 60, 0);
+    lv_obj_set_style_text_font(components->notif_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(components->notif_label, lv_color_white(), 0);
+}
+
+// --- NAVIGATION CARD (Right Card) ---
+static void create_navigation_card(view_components_t *components, lv_obj_t *parent) {
+    // 1. The Container (Right Half)
+    lv_obj_t * nav_cont = lv_obj_create(parent);
+    lv_obj_set_size(nav_cont, 380, 320);
+    lv_obj_align(nav_cont, LV_ALIGN_RIGHT_MID, -10, 30); 
+    lv_obj_set_style_bg_color(nav_cont, lv_color_hex(0x181818), 0);
+    lv_obj_set_style_radius(nav_cont, 15, 0);
+    lv_obj_set_style_border_width(nav_cont, 0, 0);
+    lv_obj_clear_flag(nav_cont, LV_OBJ_FLAG_SCROLLABLE);
+
+    // 2. Header
+    lv_obj_t * header = lv_label_create(nav_cont);
+    lv_label_set_text(header, "NEXT TURN");
     lv_obj_align(header, LV_ALIGN_TOP_MID, 0, 20);
     lv_obj_set_style_text_color(header, COLOR_NEON_GREEN, 0);
+
+    // 3. Arrow Icon
+    components->label_nav_icon = lv_label_create(nav_cont);
+    lv_label_set_text(components->label_nav_icon, LV_SYMBOL_LEFT); 
+    lv_obj_set_style_text_font(components->label_nav_icon, &lv_font_montserrat_24, 0); 
+    lv_obj_set_style_transform_zoom(components->label_nav_icon, 512, 0); // 2x Zoom
+    lv_obj_align(components->label_nav_icon, LV_ALIGN_CENTER, 0, -30); // Center of card
+    lv_obj_set_style_text_color(components->label_nav_icon, COLOR_NEON_GREEN, 0);
+
+    // 4. Distance
+    components->label_nav_dist = lv_label_create(nav_cont);
+    lv_label_set_text(components->label_nav_dist, "--- m");
+    lv_obj_set_style_text_font(components->label_nav_dist, &lv_font_montserrat_24, 0);
+    lv_obj_align(components->label_nav_dist, LV_ALIGN_CENTER, 0, 40); // Below arrow
+        lv_obj_set_style_text_color(components->label_nav_dist, lv_color_white(), 0);
+
+    // 5. Street Name
+    components->label_nav_street = lv_label_create(nav_cont);
+    lv_label_set_text(components->label_nav_street, "Route Calculating...");
+    lv_obj_align(components->label_nav_street, LV_ALIGN_BOTTOM_MID, 0, -30);
+    lv_obj_set_style_text_color(components->label_nav_street, lv_color_hex(0xAAAAAA), 0);
 }
 
 /* ========================================================================
@@ -271,79 +388,60 @@ void view_init(view_components_t *components)
     // Set absolute background
     lv_obj_set_style_bg_color(lv_scr_act(), COLOR_DARK_BG, LV_PART_MAIN);
 
-    // --- 1. CREATE MAIN WRAPPER (The object that fades in) ---
-    // This effectively replaces your old 'master_container' as the root
+    // --- 1. CREATE MAIN WRAPPER ---
     lv_obj_t * root_wrapper = lv_obj_create(lv_scr_act());
     lv_obj_set_size(root_wrapper, 800, 480);
     lv_obj_set_style_bg_opa(root_wrapper, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(root_wrapper, 0, 0);
     lv_obj_set_style_pad_all(root_wrapper, 0, 0);
-    lv_obj_set_style_opa(root_wrapper, LV_OPA_TRANSP, 0); // Start hidden (Boot sequence targets this)
-
-    // Save the real root so we can restore it later
-    components->master_container = root_wrapper;
-
-    // --- FIX 1: Make wrapper transparent to clicks ---
     lv_obj_clear_flag(root_wrapper, LV_OBJ_FLAG_CLICKABLE); 
     lv_obj_clear_flag(root_wrapper, LV_OBJ_FLAG_SCROLLABLE);
 
-    // --- 2. CREATE GLOBAL ELEMENTS (Stay simulated on all screens) ---
-    // We call this NOW so it attaches to the root_wrapper.
-    // Use this for Top Bar, Turn Signals, Warnings so they never swipe away.
-    create_top_panel(components);
-    create_turn_signals(components);
+    components->master_container = root_wrapper;
 
-    // --- 3. CREATE TILEVIEW (The Swiping Engine) ---
-    // We create this INSIDE the wrapper, but BELOW the top panel
+    // --- 2. GLOBAL ELEMENTS ---
+    create_top_panel(components);
+    // create_turn_signals(components);  /* We dont want the turn signals on the second page */
+    create_notification_overlay(components); 
+
+    // --- 3. TILEVIEW (The Swipe Logic) ---
     lv_obj_t * tileview = lv_tileview_create(root_wrapper);
     lv_obj_set_size(tileview, 800, 480);
-    lv_obj_set_style_bg_color(tileview, lv_color_hex(0x000000), 0); // Black background
-    lv_obj_remove_style(tileview, NULL, LV_PART_SCROLLBAR); // Hide scrollbars
-    lv_obj_move_background(tileview); // Push to back so Top Panel sits on top
+    lv_obj_set_style_bg_color(tileview, lv_color_hex(0x000000), 0);
+    lv_obj_remove_style(tileview, NULL, LV_PART_SCROLLBAR);
+    lv_obj_move_background(tileview);
 
-    // Create the Two Pages (Tiles)
-    lv_obj_t * tile_drive = lv_tileview_add_tile(tileview, 0, 0, LV_DIR_RIGHT); // Page 1
-    lv_obj_t * tile_music = lv_tileview_add_tile(tileview, 1, 0, LV_DIR_LEFT);  // Page 2
+    lv_obj_t * tile_drive = lv_tileview_add_tile(tileview, 0, 0, LV_DIR_RIGHT);
+    lv_obj_t * tile_music = lv_tileview_add_tile(tileview, 1, 0, LV_DIR_LEFT);
 
-    // --- 4. POPULATE PAGE 1: DRIVING (The "Pointer Swap" Trick) ---
-    // We temporarily trick the creation functions into thinking 'tile_drive' is the master container.
-    components->master_container = tile_drive;
-
+    // --- 4. POPULATE PAGE 1: DRIVING ---
+    components->master_container = tile_drive; // Trick functions into using this tile
     create_segmented_arc(components);
     create_speed_display(components);
     create_gear_display(components);
     create_rpm_display(components);
     create_temp_display(components);
-    // Note: Top panel and Turn signals were already created on the global wrapper!
+    create_turn_signals(components);
 
-    // --- 5. POPULATE PAGE 2: MUSIC ---
-    // Now we trick the music player into building on 'tile_music'
-    components->master_container = tile_music;
-    
-    create_music_player(components);
+    // --- 5. POPULATE PAGE 2: SPLIT SCREEN (The Critical Part!) ---
+    // We pass 'tile_music' explicitly as the parent
+    create_music_player(components, tile_music);     // Left Card
+    create_navigation_card(components, tile_music);  // Right Card
 
-    // --- 6. RESTORE REAL MASTER POINTER ---
-    // Important! The boot sequence expects 'master_container' to be the top-level object
-    // to fade it in. We point it back to the wrapper we created at the start.
-    components->master_container = root_wrapper;
+    // --- 6. CLEANUP & SPLASH ---
+    components->master_container = root_wrapper; // Restore real root
 
-    // --- 7. CREATE OEM SPLASH SCREEN (Overlay) ---
     components->splash_container = lv_obj_create(lv_scr_act());
     lv_obj_set_size(components->splash_container, 800, 480);
     lv_obj_set_style_bg_color(components->splash_container, COLOR_DARK_BG, 0);
     lv_obj_set_style_border_width(components->splash_container, 0, 0);
-    lv_obj_set_style_opa(components->splash_container, LV_OPA_TRANSP, 0); // Start hidden (Boot seq handles this)
+    lv_obj_clear_flag(components->splash_container, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(components->splash_container, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t * logo_img = lv_img_create(components->splash_container);
     lv_img_set_src(logo_img, &visteon_logo);
     lv_obj_align(logo_img, LV_ALIGN_CENTER, 0, 0);
 
-    // --- FIX 2: Make Splash Screen transparent to clicks ---
-    // If you don't do this, the splash screen blocks everything even when invisible!
-    lv_obj_clear_flag(components->splash_container, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_clear_flag(components->splash_container, LV_OBJ_FLAG_SCROLLABLE);
-
-    // --- 8. START THE SEQUENCE ---
     trigger_boot_sequence(components);
 }
 
