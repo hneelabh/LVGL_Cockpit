@@ -197,6 +197,20 @@ void controller_update_display(controller_context_t *ctx)
         lv_label_set_text(ctx->view.label_nav_dist, dist_buf);
         if (ctx->view.label_nav_street) lv_label_set_text(ctx->view.label_nav_street, ctx->speedometer.nav_street);
     }
+    
+    // --- BLUETOOTH STATUS ICON ---
+    if (ctx->view.bluetooth_icon) {
+        // Logic: If song duration > 0, we assume phone is connected
+        bool connected = (ctx->speedometer.duration_sec > 0);
+        
+        if (connected) {
+            // GLOW BLUE (Connected)
+            lv_obj_set_style_text_color(ctx->view.bluetooth_icon, COLOR_NEON_BLUE, 0);
+        } else {
+            // DIM GREY (Disconnected)
+            lv_obj_set_style_text_color(ctx->view.bluetooth_icon, COLOR_DARK_GREY, 0);
+        }
+    }
 }
 
 void controller_set_turn_signals(controller_context_t *ctx, bool left, bool right)

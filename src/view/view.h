@@ -44,13 +44,14 @@ typedef struct {
 
     // --- Driving Page Elements ---
     lv_obj_t *speed_arc_segments[SEGMENT_COUNT];  
-    lv_obj_t *speed_label;                        
-    lv_obj_t *gear_label;                         
-    lv_obj_t *rpm_label;                          
-    lv_obj_t *n_indicator;                        
-    lv_obj_t *left_turn_signal;                   
+    lv_obj_t *speed_label;
+    lv_obj_t *gear_label;
+    lv_obj_t *rpm_label;
+    lv_obj_t *n_indicator;
+    lv_obj_t *left_turn_signal;
     lv_obj_t *right_turn_signal;                  
-    lv_obj_t *odo_label;                          
+    lv_obj_t *odo_label;
+    lv_obj_t *bluetooth_icon;                    
     lv_obj_t *trip_label;                         
     lv_obj_t *fuel_label;                         
     lv_obj_t *temp_label;                         

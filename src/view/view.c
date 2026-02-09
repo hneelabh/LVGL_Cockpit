@@ -58,28 +58,41 @@ static void create_top_panel(view_components_t *components, lv_obj_t *parent)
     lv_obj_align(top_panel, LV_ALIGN_TOP_MID, 0, 0);
     lv_obj_clear_flag(top_panel, LV_OBJ_FLAG_SCROLLABLE);
 
-    // ODO
+    // ODO (Left)
     components->odo_label = lv_label_create(top_panel);
     lv_label_set_text(components->odo_label, "ODO\n#FFFFFF ---#"); 
     lv_obj_set_style_text_color(components->odo_label, COLOR_DARK_GREY, 0);
     lv_label_set_recolor(components->odo_label, true);
     lv_obj_align(components->odo_label, LV_ALIGN_LEFT_MID, 20, 0);
 
-    // TRIP
+    // TRIP (Left-Center)
     components->trip_label = lv_label_create(top_panel);
     lv_label_set_text(components->trip_label, "TRIP\n#FFFFFF --.-#");
     lv_obj_set_style_text_color(components->trip_label, COLOR_DARK_GREY, 0);
     lv_label_set_recolor(components->trip_label, true);
     lv_obj_align(components->trip_label, LV_ALIGN_LEFT_MID, 150, 0);
 
-    // FUEL
+    // FUEL (Right-Center)
     components->fuel_label = lv_label_create(top_panel);
     lv_label_set_text(components->fuel_label, "FUEL\n#FFFFFF [#####  ]#");
     lv_obj_set_style_text_color(components->fuel_label, COLOR_DARK_GREY, 0);
     lv_label_set_recolor(components->fuel_label, true);
-    lv_obj_align(components->fuel_label, LV_ALIGN_RIGHT_MID, -100, 0);
+    lv_obj_align(components->fuel_label, LV_ALIGN_RIGHT_MID, -180, 0); 
 
-    // Neutral indicator
+    // --- BLUETOOTH ICON (The Glow Logic) ---
+    components->bluetooth_icon = lv_label_create(top_panel);
+    lv_label_set_text(components->bluetooth_icon, LV_SYMBOL_BLUETOOTH);
+    
+    // Size: slightly smaller than 'N' but visible
+    lv_obj_set_style_text_font(components->bluetooth_icon, &lv_font_montserrat_24, 0);
+    
+    // Default Color: DARK GREY (OFF)
+    lv_obj_set_style_text_color(components->bluetooth_icon, COLOR_DARK_GREY, 0);
+    
+    // Position: To the left of the 'N'
+    lv_obj_align(components->bluetooth_icon, LV_ALIGN_RIGHT_MID, -80, 0); 
+
+    // NEUTRAL INDICATOR (Far Right)
     components->n_indicator = lv_label_create(top_panel);
     lv_label_set_text(components->n_indicator, "N");
     lv_obj_set_style_text_font(components->n_indicator, &lv_font_montserrat_36, 0);
