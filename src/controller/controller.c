@@ -146,18 +146,6 @@ void controller_update_display(controller_context_t *ctx)
         if (ctx->view.label_album) {
             lv_label_set_text(ctx->view.label_album, ctx->speedometer.track_album);
         }
-        
-        // // Fix: Update Time Label (Format: 1:30 / 3:45)
-        // if (ctx->view.label_time) {
-        //     int cur = ctx->speedometer.position_sec;
-        //     int tot = ctx->speedometer.duration_sec;
-            
-        //     // Safety check for negative numbers
-        //     if (cur < 0) cur = 0;
-        //     if (tot < 0) tot = 0;
-
-        //     lv_label_set_text_fmt(ctx->view.label_time, "%d:%02d / %d:%02d", cur / 60, cur % 60, tot / 60, tot % 60);
-        // }
 
         // Update Time Label on Status Bar
         int cur = ctx->speedometer.position_sec;
