@@ -29,10 +29,9 @@ def speed_written_cb(characteristic, value):
 
 # --- PART 2: MUSIC METADATA (The Media Player) ---
 def check_media_metadata():
-    """Polls BlueZ for the currently playing song"""
+    """Polls BlueZ for the currently playing song + Time + Status"""
     try:
         bus = SystemBus()
-        # Find the bluetooth player (usually starts with org.bluez)
         manager = bus.get("org.bluez", "/")
         managed_objects = manager.GetManagedObjects()
         
@@ -40,33 +39,46 @@ def check_media_metadata():
             if "org.bluez.MediaPlayer1" in interfaces:
                 player = bus.get("org.bluez", path)
                 
-                # Get the 'Track' dictionary safely
+                # 1. Track Info
                 try:
                     track = player.Track
                 except Exception:
-                    continue # No track info available
+                    continue 
                 
-                # Extract details (default to empty string if missing)
                 title = track.get("Title", "Unknown Title")
                 artist = track.get("Artist", "Unknown Artist")
                 album = track.get("Album", "") 
                 
-                # Format: "Title|Artist|Album"
-                # This matches the parsing logic we added to vehicle_model.c
-                info_string = f"{title}|{artist}|{album}"
+                # 2. Duration (ms -> sec)
+                duration_ms = track.get("Duration", 0)
+                duration_sec = int(duration_ms / 1000)
+
+                # 3. Position (ms -> sec)
+                try:
+                    position_ms = player.Position
+                    position_sec = int(position_ms / 1000)
+                except Exception:
+                    position_sec = 0
+
+                # 4. Status (Playing/Paused/Stopped) - CRITICAL FIX
+                try:
+                    # BlueZ returns "Playing", "Paused", "Stopped"
+                    status_str = player.Status
+                except Exception:
+                    status_str = "Paused"
+
+                # 5. Format: 6 items (Title|Artist|Album|Dur|Pos|Status)
+                info_string = f"{title}|{artist}|{album}|{duration_sec}|{position_sec}|{status_str}"
                 
-                # Debug print
+                # Debug print to verify
                 print(f"🎵 Sending: {info_string}")
                 
-                # Send to C (Limit to 128 bytes)
                 send_to_socket(MUSIC_SOCKET, info_string.encode('utf-8'))
                 return
                 
     except Exception as e:
-        # Common error if BlueZ isn't ready or no phone connected
         pass
     
-    # If we fall through, nothing was sent
     return True
 
 # --- MAIN LOOP ---

@@ -33,41 +33,43 @@ typedef struct {
     char track_title[64];
     char track_artist[64];
     char track_album[64];
+    int duration_sec;
+    int position_sec;
+    bool is_playing;
 
     // --- NAVIGATION DATA ---
-    char nav_street[64];    // "Main Street"
-    int nav_distance;       // Meters to turn (e.g. 200)
-    char nav_icon[8];       // Arrow Symbol (LV_SYMBOL_LEFT)
+    char nav_street[64];    
+    int nav_distance;       
+    char nav_icon[8];       
+
 } speedometer_state_t;
 
 /**
- * @brief Turn signal state (Used by Controller/View)
+ * @brief Turn signal state
  */
 typedef struct {
-    bool left_active;       // Left turn signal on/off
-    bool right_active;      // Right turn signal on/off
-    bool left_blink;        // Current blink state (for animation)
-    bool right_blink;       // Current blink state (for animation)
-    int blink_counter;      // Counter for blink timing
+    bool left_active;       
+    bool right_active;      
+    bool left_blink;        
+    bool right_blink;       
+    int blink_counter;      
 } turn_signal_state_t;
-
-/**
- * @brief Demo simulation state
- */
-typedef struct {
-    int state;              // 0=Accel, 1=Brake, 2=SportAccel, 3=FullStop
-    int pause_timer;        // Pause counter for state transitions
-} demo_state_t;
 
 /* ========================================================================
  * Function Prototypes
  * ======================================================================== */
 
 void model_init(speedometer_state_t *state);
+
+// Calculations
 int model_calculate_gear(int speed);
 int model_calculate_rpm(int speed, int gear);
 void model_update_speed(speedometer_state_t *state, int new_speed);
+
 int model_get_speed_zone(int speed);
 int model_get_rpm_zone(int rpm);
+
+// Command Sender
+void model_send_music_cmd(const char *cmd);
 
 #endif // MODEL_H
